@@ -1,0 +1,92 @@
+zookeeper:
+    image: oddpoet/zookeeper
+    hostname: zookeeper
+    command:
+        - "2181"
+    ports:
+        - "2181:2181"
+kafka:
+    image: wurstmeister/kafka
+    hostname: kafka
+    ports:
+        - "9092:9092"
+    expose:
+        - "9092"
+    links:
+        - zookeeper:zk
+    environment:
+        KAFKA_ADVERTISED_PORT: 9092
+        # KAFKA_ADVERTISED_HOST_NAME: localhost
+        KAFKA_CREATE_TOPICS: "test1:1:1,test1reply:1:1"
+fuseki:
+    image: stain/jena-fuseki
+    # ports:
+    #     - "3030:3030"
+    environment:
+        ADMIN_PASSWORD: pw123
+    # ToDo: Create new Docker image which creates a directory for dataset under /fuseki (?)
+    command: /jena-fuseki/fuseki-server --update --loc=/fuseki /dutmp
+redis:
+    image: redis:2.8.9
+jobstatus:
+    build: ../dataunity-messaging
+    command: python jobs/job_status.py start
+    expose:
+        - "5002"
+        - "5003"
+    ports:
+        - "5002:5002"
+        - "5003:5003"
+jobqueue:
+    build: ../dataunity-messaging
+    command: python jobs/job_queue.py start
+    expose:
+        - "5000"
+        - "5001"
+    ports:
+        - "5000:5000"
+        - "5001:5001"
+pipesworker1:
+    build: ../dataunity-pipes-worker
+    links:
+        - jobstatus
+        - jobqueue
+filecache:
+    build: ../dataunity-filecache
+    # image: busybox
+    volumes:
+        - /var/filecache 
+        # - /home/normal/tmp/dudeploy/filecache:/var/filecache
+filemetadata:
+    build: ../dataunity-datastructdef
+    expose:
+        - "5004"
+    links:
+        - zookeeper
+        - kafka
+    # ports:
+    #     - "5004:5004"
+    volumes_from:
+        - filecache
+web:
+    build: ../dataunity-web
+    expose:
+        - "5004"
+    ports:
+        - "0.0.0.0:6543:6543"
+    links:
+        - jobstatus
+        - jobqueue
+        - redis
+        - fuseki
+        - filemetadata
+        - kafka
+    # Development
+    volumes:
+        - ../dataunity-web:/code
+    volumes_from:
+        - filecache
+# tempfile:
+#     image: busybox
+#     volumes_from:
+#         - filecache
