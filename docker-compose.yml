@@ -17,11 +17,11 @@ kafka:
     environment:
         KAFKA_ADVERTISED_PORT: 9092
         # KAFKA_ADVERTISED_HOST_NAME: localhost
-        KAFKA_CREATE_TOPICS: "test1:1:1,test1reply:1:1"
+        KAFKA_CREATE_TOPICS: "test1:1:1,test1reply:1:1,dataworkflowjobstart:1:1,dataworkflowjobstatus:1:1"
 fuseki:
     image: stain/jena-fuseki
-    # ports:
-    #     - "3030:3030"
+    ports:
+        - "3030:3030"
     environment:
         ADMIN_PASSWORD: pw123
     # ToDo: Create new Docker image which creates a directory for dataset under /fuseki (?)
@@ -46,17 +46,21 @@ jobqueue:
     ports:
         - "5000:5000"
         - "5001:5001"
-pipesworker1:
-    build: ../dataunity-pipes-worker
-    links:
-        - jobstatus
-        - jobqueue
 filecache:
     build: ../dataunity-filecache
     # image: busybox
     volumes:
         - /var/filecache 
         # - /home/normal/tmp/dudeploy/filecache:/var/filecache
+pipesworker1:
+    build: ../dataunity-pipes-worker
+    links:
+        - jobstatus
+        - jobqueue
+        - zookeeper
+        - kafka
+    volumes_from:
+        - filecache
 filemetadata:
     build: ../dataunity-datastructdef
     expose:
@@ -74,6 +78,8 @@ web:
         - "5004"
     ports:
         - "0.0.0.0:6543:6543"
+    environment:
+        CONSUMER_GROUP: Web1
     links:
         - jobstatus
         - jobqueue
@@ -90,3 +96,69 @@ web:
 #     image: busybox
 #     volumes_from:
 #         - filecache
+# asynctest:
+#     build: /home/normal/tmp/asynciokafka
+#     links:
+#         - kafka
+#         - zookeeper
+#     volumes:
+#         - /home/normal/tmp/asynciokafka:/code
+# jobstatustest:
+#     build: /home/normal/tmp/kafka/simple_consumer
+#     links:
+#         - kafka
+#         - zookeeper
+#     volumes:
+#         - /home/normal/tmp/kafka/simple_consumer:/code
+tmpfilemetadatamonitor:
+    build: ../kafka-topic-monitor
+    links:
+        - kafka
+        - zookeeper
+    environment:
+        CONSUMER_GROUP: FileMetaDataMonitor01
+        TOPIC: test1
+tmpfilemetadatareplymonitor:
+    build: ../kafka-topic-monitor
+    links:
+        - kafka
+        - zookeeper
+    environment:
+        CONSUMER_GROUP: FileMetaDataReplyMonitor01
+        TOPIC: test1reply
+tmppipesjobstartmonitor:
+    build: ../kafka-topic-monitor
+    links:
+        - kafka
+        - zookeeper
+    environment:
+        CONSUMER_GROUP: PipesJobStartMonitor01
+        TOPIC: dataworkflowjobstart
+tmppipesjobstatusmonitor:
+    build: ../kafka-topic-monitor
+    links:
+        - kafka
+        - zookeeper
+    environment:
+        CONSUMER_GROUP: PipesJobStatusMonitor01
+        TOPIC: dataworkflowjobstatus
+# tmpfilemetadatamonitor:
+#     build: /home/normal/tmp/kafka/kafka_topic_monitor
+#     links:
+#         - kafka
+#         - zookeeper
+#     volumes:
+#         - /home/normal/tmp/kafka/kafka_topic_monitor:/code
+#     environment:
+#         CONSUMER_GROUP: FileMetaDataMonitor01
+#         TOPIC: test1
+# tmpfilemetadatareplymonitor:
+#     build: /home/normal/tmp/kafka/kafka_topic_monitor
+#     links:
+#         - kafka
+#         - zookeeper
+#     volumes:
+#         - /home/normal/tmp/kafka/kafka_topic_monitor:/code
+#     environment:
+#         CONSUMER_GROUP: FileMetaDataReplyMonitor01
+#         TOPIC: test1reply
