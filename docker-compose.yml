@@ -28,88 +28,66 @@ fuseki:
     command: /jena-fuseki/fuseki-server --update --loc=/fuseki /dutmp
 redis:
     image: redis:2.8.9
-jobstatus:
-    build: ../dataunity-messaging
-    command: python jobs/job_status.py start
-    expose:
-        - "5002"
-        - "5003"
-    ports:
-        - "5002:5002"
-        - "5003:5003"
-jobqueue:
-    build: ../dataunity-messaging
-    command: python jobs/job_queue.py start
-    expose:
-        - "5000"
-        - "5001"
-    ports:
-        - "5000:5000"
-        - "5001:5001"
+# jobstatus:
+#     build: ../dataunity-messaging
+#     command: python jobs/job_status.py start
+#     expose:
+#         - "5002"
+#         - "5003"
+#     ports:
+#         - "5002:5002"
+#         - "5003:5003"
+# jobqueue:
+#     build: ../dataunity-messaging
+#     command: python jobs/job_queue.py start
+#     expose:
+#         - "5000"
+#         - "5001"
+#     ports:
+#         - "5000:5000"
+#         - "5001:5001"
 filecache:
     build: ../dataunity-filecache
-    # image: busybox
     volumes:
         - /var/filecache 
-        # - /home/normal/tmp/dudeploy/filecache:/var/filecache
 pipesworker1:
     build: ../dataunity-pipes-worker
     links:
-        - jobstatus
-        - jobqueue
         - zookeeper
         - kafka
+        # - jobstatus
+        # - jobqueue
     volumes_from:
         - filecache
 filemetadata:
     build: ../dataunity-datastructdef
-    expose:
-        - "5004"
+    # expose:
+    #     - "5004"
     links:
         - zookeeper
         - kafka
-    # ports:
-    #     - "5004:5004"
     volumes_from:
         - filecache
 web:
     build: ../dataunity-web
-    expose:
-        - "5004"
+    # expose:
+    #     - "5004"
     ports:
         - "0.0.0.0:6543:6543"
     environment:
         CONSUMER_GROUP: Web1
     links:
-        - jobstatus
-        - jobqueue
         - redis
         - fuseki
         - filemetadata
         - kafka
+        # - jobstatus
+        # - jobqueue
     # Development
     volumes:
         - ../dataunity-web:/code
     volumes_from:
         - filecache
-# tempfile:
-#     image: busybox
-#     volumes_from:
-#         - filecache
-# asynctest:
-#     build: /home/normal/tmp/asynciokafka
-#     links:
-#         - kafka
-#         - zookeeper
-#     volumes:
-#         - /home/normal/tmp/asynciokafka:/code
-# jobstatustest:
-#     build: /home/normal/tmp/kafka/simple_consumer
-#     links:
-#         - kafka
-#         - zookeeper
-#     volumes:
-#         - /home/normal/tmp/kafka/simple_consumer:/code
 tmpfilemetadatamonitor:
     build: ../kafka-topic-monitor
     links:
@@ -142,23 +120,3 @@ tmppipesjobstatusmonitor:
     environment:
         CONSUMER_GROUP: PipesJobStatusMonitor01
         TOPIC: dataworkflowjobstatus
-# tmpfilemetadatamonitor:
-#     build: /home/normal/tmp/kafka/kafka_topic_monitor
-#     links:
-#         - kafka
-#         - zookeeper
-#     volumes:
-#         - /home/normal/tmp/kafka/kafka_topic_monitor:/code
-#     environment:
-#         CONSUMER_GROUP: FileMetaDataMonitor01
-#         TOPIC: test1
-# tmpfilemetadatareplymonitor:
-#     build: /home/normal/tmp/kafka/kafka_topic_monitor
-#     links:
-#         - kafka
-#         - zookeeper
-#     volumes:
-#         - /home/normal/tmp/kafka/kafka_topic_monitor:/code
-#     environment:
-#         CONSUMER_GROUP: FileMetaDataReplyMonitor01
-#         TOPIC: test1reply
