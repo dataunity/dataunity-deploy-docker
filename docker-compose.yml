@@ -75,6 +75,8 @@ web:
     ports:
         - "0.0.0.0:6543:6543"
     environment:
+        # ToDo: use container name as consumer group?
+        #   Check container name is unique when scaling used.
         CONSUMER_GROUP: Web1
     links:
         - redis
@@ -88,6 +90,7 @@ web:
         - ../dataunity-web:/code
     volumes_from:
         - filecache
+    env_file: ./web.env
 tmpfilemetadatamonitor:
     build: ../kafka-topic-monitor
     links:
