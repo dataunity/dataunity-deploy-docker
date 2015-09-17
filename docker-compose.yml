@@ -6,7 +6,7 @@ zookeeper:
     ports:
         - "2181:2181"
 kafka:
-    image: wurstmeister/kafka
+    image: wurstmeister/kafka:0.8.2.1
     hostname: kafka
     ports:
         - "9092:9092"
@@ -28,24 +28,6 @@ fuseki:
     command: /jena-fuseki/fuseki-server --update --loc=/fuseki /dutmp
 redis:
     image: redis:2.8.9
-# jobstatus:
-#     build: ../dataunity-messaging
-#     command: python jobs/job_status.py start
-#     expose:
-#         - "5002"
-#         - "5003"
-#     ports:
-#         - "5002:5002"
-#         - "5003:5003"
-# jobqueue:
-#     build: ../dataunity-messaging
-#     command: python jobs/job_queue.py start
-#     expose:
-#         - "5000"
-#         - "5001"
-#     ports:
-#         - "5000:5000"
-#         - "5001:5001"
 filecache:
     build: ../dataunity-filecache
     volumes:
@@ -90,36 +72,36 @@ web:
         - ../dataunity-web:/code
     volumes_from:
         - filecache
-    env_file: ./web.env
-tmpfilemetadatamonitor:
-    build: ../kafka-topic-monitor
-    links:
-        - kafka
-        - zookeeper
-    environment:
-        CONSUMER_GROUP: FileMetaDataMonitor01
-        TOPIC: test1
-tmpfilemetadatareplymonitor:
-    build: ../kafka-topic-monitor
-    links:
-        - kafka
-        - zookeeper
-    environment:
-        CONSUMER_GROUP: FileMetaDataReplyMonitor01
-        TOPIC: test1reply
-tmppipesjobstartmonitor:
-    build: ../kafka-topic-monitor
-    links:
-        - kafka
-        - zookeeper
-    environment:
-        CONSUMER_GROUP: PipesJobStartMonitor01
-        TOPIC: dataworkflowjobstart
-tmppipesjobstatusmonitor:
-    build: ../kafka-topic-monitor
-    links:
-        - kafka
-        - zookeeper
-    environment:
-        CONSUMER_GROUP: PipesJobStatusMonitor01
-        TOPIC: dataworkflowjobstatus
+    env_file: ./web_dev.env
+# tmpfilemetadatamonitor:
+#     build: ../kafka-topic-monitor
+#     links:
+#         - kafka
+#         - zookeeper
+#     environment:
+#         CONSUMER_GROUP: FileMetaDataMonitor01
+#         TOPIC: test1
+# tmpfilemetadatareplymonitor:
+#     build: ../kafka-topic-monitor
+#     links:
+#         - kafka
+#         - zookeeper
+#     environment:
+#         CONSUMER_GROUP: FileMetaDataReplyMonitor01
+#         TOPIC: test1reply
+# tmppipesjobstartmonitor:
+#     build: ../kafka-topic-monitor
+#     links:
+#         - kafka
+#         - zookeeper
+#     environment:
+#         CONSUMER_GROUP: PipesJobStartMonitor01
+#         TOPIC: dataworkflowjobstart
+# tmppipesjobstatusmonitor:
+#     build: ../kafka-topic-monitor
+#     links:
+#         - kafka
+#         - zookeeper
+#     environment:
+#         CONSUMER_GROUP: PipesJobStatusMonitor01
+#         TOPIC: dataworkflowjobstatus
