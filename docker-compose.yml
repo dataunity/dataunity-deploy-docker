@@ -17,11 +17,11 @@ kafka:
     environment:
         KAFKA_ADVERTISED_PORT: 9092
         # KAFKA_ADVERTISED_HOST_NAME: localhost
-        KAFKA_CREATE_TOPICS: "test1:1:1,test1reply:1:1,dataworkflowjobstart:1:1,dataworkflowjobstatus:1:1"
+        KAFKA_CREATE_TOPICS: "datafile.created:1:1,datafile.schema.created:1:1,dataworkflowjobstart:1:1,dataworkflowjobstatus:1:1"
 fuseki:
     image: stain/jena-fuseki
-    ports:
-        - "3030:3030"
+    #ports:
+    #    - "3030:3030"
     environment:
         ADMIN_PASSWORD: pw123
     # ToDo: Create new Docker image which creates a directory for dataset under /fuseki (?)
@@ -31,20 +31,20 @@ redis:
 filecache:
     build: ../dataunity-filecache
     volumes:
-        - /var/filecache 
+        - /var/filecache:/var/filecache
+tempfiles:
+    build: ../dataunity-tempfiles
+    volumes:
+        - /var/tempfiles:/var/tempfiles
 pipesworker1:
     build: ../dataunity-pipes-worker
     links:
         - zookeeper
         - kafka
-        # - jobstatus
-        # - jobqueue
     volumes_from:
         - filecache
 filemetadata:
     build: ../dataunity-datastructdef
-    # expose:
-    #     - "5004"
     links:
         - zookeeper
         - kafka
@@ -65,13 +65,12 @@ web:
         - fuseki
         - filemetadata
         - kafka
-        # - jobstatus
-        # - jobqueue
+    volumes_from:
+        - filecache
+        - tempfiles
     # Development
     volumes:
         - ../dataunity-web:/code
-    volumes_from:
-        - filecache
     env_file: ./web_dev.env
 # tmpfilemetadatamonitor:
 #     build: ../kafka-topic-monitor
