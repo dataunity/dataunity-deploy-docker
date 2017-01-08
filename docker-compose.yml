@@ -6,7 +6,9 @@ zookeeper:
     ports:
         - "2181:2181"
 kafka:
-    image: wurstmeister/kafka:0.8.2.1
+    # image: wurstmeister/kafka:0.8.2.1
+    # image: wurstmeister/kafka:0.9.0.1
+    image: wurstmeister/kafka:0.10.1.0-1
     hostname: kafka
     ports:
         - "9092:9092"
@@ -17,11 +19,11 @@ kafka:
     environment:
         KAFKA_ADVERTISED_PORT: 9092
         # KAFKA_ADVERTISED_HOST_NAME: localhost
-        KAFKA_CREATE_TOPICS: "datafile.created:1:1,datafile.schema.created:1:1,dataworkflowjobstart:1:1,dataworkflowjobstatus:1:1"
+        KAFKA_CREATE_TOPICS: "http_datasets:1:1,http_datasets_reply:1:1,http_panels:1:1,http_panels_reply:1:1,testtopic:1:1,datafile.created:1:1,datafile.schema.created:1:1,dataworkflowjobstart:1:1,dataworkflowjobstatus:1:1"
 fuseki:
     image: stain/jena-fuseki
-    #ports:
-    #    - "3030:3030"
+    ports:
+        - "3030:3030"
     environment:
         ADMIN_PASSWORD: pw123
     # ToDo: Create new Docker image which creates a directory for dataset under /fuseki (?)
@@ -55,11 +57,15 @@ web:
     # expose:
     #     - "5004"
     ports:
+        # Pyramid
         - "0.0.0.0:6543:6543"
+        # Aiohttp
+        # - "0.0.0.0:8080:8080"
     environment:
         # ToDo: use container name as consumer group?
         #   Check container name is unique when scaling used.
         CONSUMER_GROUP: Web1
+        PYTHONASYNCIODEBUG: 1
     links:
         - redis
         - fuseki
@@ -72,6 +78,34 @@ web:
     volumes:
         - ../dataunity-web:/code
     env_file: ./web_dev.env
+    command: sh /code/startup_web.sh
+    # command: pserve development.ini --reload
+webasync:
+    build: ../dataunity-web
+    # expose:
+    #     - "5004"
+    ports:
+        # Aiohttp
+        - "0.0.0.0:8080:8080"
+    environment:
+        # ToDo: use container name as consumer group?
+        #   Check container name is unique when scaling used.
+        CONSUMER_GROUP: WebAsync
+        PYTHONASYNCIODEBUG: 1
+    links:
+        - redis
+        - fuseki
+        - filemetadata
+        - kafka
+    volumes_from:
+        - filecache
+        - tempfiles
+    # Development
+    volumes:
+        - ../dataunity-web:/code
+    env_file: ./web_dev.env
+    command: sh /code/startup.sh
+    #command: gunicorn duweb.app:web_app --bind 0.0.0.0:8080 --worker-class aiohttp.worker.GunicornWebWorker --reload
 # tmpfilemetadatamonitor:
 #     build: ../kafka-topic-monitor
 #     links:
