@@ -19,7 +19,7 @@ kafka:
     environment:
         KAFKA_ADVERTISED_PORT: 9092
         # KAFKA_ADVERTISED_HOST_NAME: localhost
-        KAFKA_CREATE_TOPICS: "http_datasets:1:1,http_datasets_reply:1:1,http_panels:1:1,http_panels_reply:1:1,testtopic:1:1,datafile.created:1:1,datafile.schema.created:1:1,dataworkflowjobstart:1:1,dataworkflowjobstatus:1:1"
+        KAFKA_CREATE_TOPICS: "traffic.vehicle.1:1:1,traffic.count.1:1:1,traffic.count.2:1:1,http_datasets:1:1,http_datasets_reply:1:1,http_panels:1:1,http_panels_reply:1:1,datafile.created:1:1,datafile.schema.created:1:1,dataworkflowjobstart:1:1,dataworkflowjobstatus:1:1"
 fuseki:
     image: stain/jena-fuseki
     ports:
@@ -52,6 +52,12 @@ filemetadata:
         - kafka
     volumes_from:
         - filecache
+
+# Real-time demo
+mosquitto:
+    image: toke/mosquitto:release-1.4.10-2
+
+# Web
 web:
     build: ../dataunity-web
     # expose:
@@ -97,6 +103,7 @@ webasync:
         - fuseki
         - filemetadata
         - kafka
+        - mosquitto
     volumes_from:
         - filecache
         - tempfiles
