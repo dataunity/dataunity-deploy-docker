@@ -1,152 +1,318 @@
-zookeeper:
-    image: oddpoet/zookeeper
-    hostname: zookeeper
-    command:
-        - "2181"
-    ports:
-        - "2181:2181"
-kafka:
-    # image: wurstmeister/kafka:0.8.2.1
-    # image: wurstmeister/kafka:0.9.0.1
-    image: wurstmeister/kafka:0.10.1.0-1
-    hostname: kafka
-    ports:
-        - "9092:9092"
-    expose:
-        - "9092"
-    links:
-        - zookeeper:zk
-    environment:
-        KAFKA_ADVERTISED_PORT: 9092
-        # KAFKA_ADVERTISED_HOST_NAME: localhost
-        KAFKA_CREATE_TOPICS: "citizensensing.views:1:1,citizensensing.views.reply:1:1,devices:1:1,devices.reply:1:1,devices.data.traffic.count1:1:1,panels.vizbuilder:1:1,panels.vizbuilder.reply:1:1,datasets.tablesummariesquery:1:1,datasets.tablesummariesquery.reply:1:1,datasets.createcsvwfromcsvcmd:1:1,datasets.createcsvwfromcsvcmd.reply:1:1,datasets.createcsvwfromcsvcmd.reply:1:1,traffic.vehicle.1:1:1,traffic.count.1:1:1,traffic.count.2:1:1,http_datasets:1:1,http_datasets_reply:1:1,http_panels:1:1,http_panels_reply:1:1,datafile.created:1:1,datafile.schema.created:1:1,dataworkflowjobstart:1:1,dataworkflowjobstatus:1:1"
-fuseki:
-    image: stain/jena-fuseki
-    ports:
-        - "3030:3030"
-    environment:
-        ADMIN_PASSWORD: pw123
-    # ToDo: Create new Docker image which creates a directory for dataset under /fuseki (?)
-    command: /jena-fuseki/fuseki-server --update --loc=/fuseki /dutmp
-redis:
-    image: redis:2.8.9
-filecache:
-    build: ../dataunity-filecache
-    volumes:
-        - /var/filecache:/var/filecache
-tempfiles:
-    build: ../dataunity-tempfiles
-    volumes:
-        - /var/tempfiles:/var/tempfiles
-pipesworker1:
-    build: ../dataunity-pipes-worker
-    links:
-        - zookeeper
-        - kafka
-    volumes_from:
-        - filecache
-filemetadata:
-    build: ../dataunity-datastructdef
-    links:
-        - zookeeper
-        - kafka
-    volumes_from:
-        - filecache
+---
+version: '2'
+services:
+    zookeeper:
+        image: confluentinc/cp-zookeeper:3.3.0
+        hostname: zookeeper
+        ports:
+            - "2181:2181"
+        environment:
+            ZOOKEEPER_CLIENT_PORT: 2181
+            ZOOKEEPER_TICK_TIME: 2000
 
-# Real-time demo
-# mosquitto:
-#     image: toke/mosquitto:release-1.4.10-2
-mosquitto:
-    image: eclipse-mosquitto:1.4.10
-    expose:
-        - "1883"
-# Web
-web:
-    build: ../dataunity-web
-    # expose:
-    #     - "5004"
-    ports:
-        # Pyramid
-        - "0.0.0.0:6543:6543"
-        # Aiohttp
-        # - "0.0.0.0:8080:8080"
-    environment:
-        # ToDo: use container name as consumer group?
-        #   Check container name is unique when scaling used.
-        CONSUMER_GROUP: Web1
-        PYTHONASYNCIODEBUG: 1
-    links:
-        - redis
-        - fuseki
-        - filemetadata
-        - kafka
-    volumes_from:
-        - filecache
-        - tempfiles
-    # Development
-    volumes:
-        - ../dataunity-web:/code
-    env_file: ./web_dev.env
-    # TODO: Switch to 'exec' form so signals are passed to app process, not shell
-    command: sh /code/startup_web.sh
-    # command: pserve development.ini --reload
-webasync:
-    build: ../dataunity-web
-    # expose:
-    #     - "5004"
-    ports:
-        # Aiohttp
-        - "0.0.0.0:8080:8080"
-    environment:
-        # ToDo: use container name as consumer group?
-        #   Check container name is unique when scaling used.
-        CONSUMER_GROUP: WebAsync
-        PYTHONASYNCIODEBUG: 1
-    links:
-        - redis
-        - fuseki
-        - filemetadata
-        - kafka
-        - mosquitto
-    volumes_from:
-        - filecache
-        - tempfiles
-    # Development
-    volumes:
-        - ../dataunity-web:/code
-    env_file: ./web_dev.env
-    # TODO: Switch to 'exec' form so signals are passed to app process, not shell
-    command: sh /code/startup.sh
-    #command: gunicorn duweb.app:web_app --bind 0.0.0.0:8080 --worker-class aiohttp.worker.GunicornWebWorker --reload
-# tmpfilemetadatamonitor:
-#     build: ../kafka-topic-monitor
-#     links:
-#         - kafka
-#         - zookeeper
-#     environment:
-#         CONSUMER_GROUP: FileMetaDataMonitor01
-#         TOPIC: test1
-# tmpfilemetadatareplymonitor:
-#     build: ../kafka-topic-monitor
-#     links:
-#         - kafka
-#         - zookeeper
-#     environment:
-#         CONSUMER_GROUP: FileMetaDataReplyMonitor01
-#         TOPIC: test1reply
-# tmppipesjobstartmonitor:
-#     build: ../kafka-topic-monitor
-#     links:
-#         - kafka
-#         - zookeeper
-#     environment:
-#         CONSUMER_GROUP: PipesJobStartMonitor01
-#         TOPIC: dataworkflowjobstart
-# tmppipesjobstatusmonitor:
-#     build: ../kafka-topic-monitor
-#     links:
-#         - kafka
-#         - zookeeper
-#     environment:
-#         CONSUMER_GROUP: PipesJobStatusMonitor01
-#         TOPIC: dataworkflowjobstatus
+    kafka:
+        image: confluentinc/cp-kafka:3.3.0
+        hostname: kafka
+        depends_on:
+            - zookeeper
+        ports:
+            - "9092:9092"
+        environment:
+            KAFKA_BROKER_ID: 1
+            KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+            KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:9092'
+            #KAFKA_METRIC_REPORTERS: io.confluent.metrics.reporter.ConfluentMetricsReporter
+            KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+            KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+            #CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: kafka:9092
+            #CONFLUENT_METRICS_REPORTER_ZOOKEEPER_CONNECT: zookeeper:2181
+            #CONFLUENT_METRICS_REPORTER_TOPIC_REPLICAS: 1
+            #CONFLUENT_METRICS_ENABLE: 'true'
+            #CONFLUENT_SUPPORT_CUSTOMER_ID: 'anonymous'
+
+    connect:
+        image: confluentinc/cp-kafka-connect:3.3.0
+        hostname: connect
+        depends_on:
+            - zookeeper
+            - kafka
+            #- schema_registry
+        ports:
+            - "8083:8083"
+        env_file: ./connect_dev.env
+        environment:
+            CONNECT_BOOTSTRAP_SERVERS: 'kafka:9092'
+            CONNECT_REST_ADVERTISED_HOST_NAME: connect
+            CONNECT_REST_PORT: 8083
+            CONNECT_GROUP_ID: compose-connect-group
+            CONNECT_CONFIG_STORAGE_TOPIC: docker-connect-configs
+            CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 1
+            CONNECT_OFFSET_FLUSH_INTERVAL_MS: 10000
+            CONNECT_OFFSET_STORAGE_TOPIC: docker-connect-offsets
+            CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 1
+            CONNECT_STATUS_STORAGE_TOPIC: docker-connect-status
+            CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 1
+            CONNECT_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+            #CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL: 'http://schema_registry:8081'
+            CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+            #CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL: 'http://schema_registry:8081'
+            CONNECT_INTERNAL_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+            CONNECT_INTERNAL_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+            CONNECT_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+
+    # OLD
+    # zookeeper:
+    #     image: confluentinc/cp-zookeeper:3.3.0
+    #     hostname: zookeeper
+    #     # network_mode: host
+    #     ports:
+    #         - "2181:2181"
+    #     environment:
+    #         ZOOKEEPER_CLIENT_PORT: 2181
+    #     #   ZOOKEEPER_TICK_TIME: 2000
+    #     # TODO: mount data to external volume
+    #     # extra_hosts:
+    #     #     - "moby:127.0.0.1"
+
+    # OLD
+    # kafka:
+    #     image: confluentinc/cp-kafka:3.3.0
+    #     hostname: kafka
+    #     # network_mode: host
+    #     depends_on:
+    #         - zookeeper
+    #     ports:
+    #         - "9092:9092"
+    #     environment:
+    #         KAFKA_BROKER_ID: 1
+    #         KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    #         KAFKA_ZOOKEEPER_CONNECT: localhost:2181
+    #         KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+    #         # KAFKA_ADVERTISED_LISTENERS: localhost:9092
+    #         # DEPRECATED:
+    #         # KAFKA_ADVERTISED_PORT: 9092
+    #         # KAFKA_ADVERTISED_HOST_NAME: localhost
+    #     # TODO: mount data to external volume
+    #     # extra_hosts:
+    #     #     - "moby:127.0.0.1"
+
+    # OLD
+    # connect:
+    #     image: confluentinc/cp-kafka-connect:3.3.0
+    #     hostname: connect
+    #     network_mode: host
+    #     depends_on:
+    #         - zookeeper
+    #         - kafka
+    #     ports:
+    #         - "8083:8083"
+    #     environment:
+    #         CONNECT_BOOTSTRAP_SERVERS: 'localhost:9092'
+    #         CONNECT_REST_ADVERTISED_HOST_NAME: connect
+    #         CONNECT_REST_PORT: 8083
+    #         CONNECT_GROUP_ID: compose-connect-group
+    #         CONNECT_CONFIG_STORAGE_TOPIC: docker-connect-configs
+    #         CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 1
+    #         CONNECT_OFFSET_FLUSH_INTERVAL_MS: 10000
+    #         CONNECT_OFFSET_STORAGE_TOPIC: docker-connect-offsets
+    #         CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 1
+    #         CONNECT_STATUS_STORAGE_TOPIC: docker-connect-status
+    #         CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 1
+    #         CONNECT_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+    #         CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+    #         CONNECT_INTERNAL_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+    #         CONNECT_INTERNAL_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+    #         CONNECT_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+    #         # NOTE: moved AWS settings to overrides file
+    #         AWS_ACCESS_KEY_ID: SEE_ENV_FILE
+    #         AWS_SECRET_ACCESS_KEY: SEE_ENV_FILE
+
+    # OLD
+    # zookeeper:
+    #     image: oddpoet/zookeeper
+    #     hostname: zookeeper
+    #     network_mode: host
+    #     command:
+    #         - "2181"
+    #     ports:
+    #         - "2181:2181"
+
+    # Working with docker compose v2
+    # zookeeper:
+    #     image: wurstmeister/zookeeper
+    #     ports:
+    #         - "2181:2181"
+
+    # Working with docker compose v2
+    # kafka:
+    #     # image: wurstmeister/kafka:0.8.2.1
+    #     # image: wurstmeister/kafka:0.9.0.1
+    #     image: wurstmeister/kafka:0.10.1.0-1
+    #     hostname: kafka
+    #     # network_mode: host
+    #     ports:
+    #         - "9092:9092"
+    #     expose:
+    #         - "9092"
+    #     depends_on:
+    #         - zookeeper
+    #     # links:
+    #     #     - zookeeper:zk
+    #     environment:
+    #         KAFKA_ADVERTISED_PORT: 9092
+    #         # KAFKA_ADVERTISED_HOST_NAME: localhost
+    #         KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+    #         KAFKA_CREATE_TOPICS: "citizensensing.views:1:1,citizensensing.views.reply:1:1,devices:1:1,devices.reply:1:1,devices.data.traffic.count1:1:1,panels.vizbuilder:1:1,panels.vizbuilder.reply:1:1,datasets.tablesummariesquery:1:1,datasets.tablesummariesquery.reply:1:1,datasets.createcsvwfromcsvcmd:1:1,datasets.createcsvwfromcsvcmd.reply:1:1,datasets.createcsvwfromcsvcmd.reply:1:1,traffic.vehicle.1:1:1,traffic.count.1:1:1,traffic.count.2:1:1,http_datasets:1:1,http_datasets_reply:1:1,http_panels:1:1,http_panels_reply:1:1,datafile.created:1:1,datafile.schema.created:1:1,dataworkflowjobstart:1:1,dataworkflowjobstatus:1:1"
+    #     volumes:
+    #         - /var/run/docker.sock:/var/run/docker.sock
+
+    fuseki:
+        image: stain/jena-fuseki
+        # network_mode: host
+        ports:
+            - "3030:3030"
+        environment:
+            ADMIN_PASSWORD: pw123
+        # ToDo: Create new Docker image which creates a directory for dataset under /fuseki (?)
+        command: /jena-fuseki/fuseki-server --update --loc=/fuseki /dutmp
+
+    redis:
+        image: redis:2.8.9
+        # hostname: redis
+        # network_mode: host
+        ports:
+            - "6379:6379"
+
+    filecache:
+        build: ../dataunity-filecache
+        volumes:
+            - /var/filecache:/var/filecache
+
+    tempfiles:
+        build: ../dataunity-tempfiles
+        volumes:
+            - /var/tempfiles:/var/tempfiles
+
+    pipesworker1:
+        build: ../dataunity-pipes-worker
+        depends_on:
+            - zookeeper
+            - kafka
+        volumes_from:
+            - filecache
+
+    filemetadata:
+        build: ../dataunity-datastructdef
+        depends_on:
+            - zookeeper
+            - kafka
+        volumes_from:
+            - filecache
+
+    # Real-time demo
+    # mosquitto:
+    #     image: toke/mosquitto:release-1.4.10-2
+    mosquitto:
+        image: eclipse-mosquitto:1.4.10
+        expose:
+            - "1883"
+
+    # Web
+    web:
+        build: ../dataunity-web
+        # expose:
+        #     - "5004"
+        ports:
+            # Pyramid
+            - "0.0.0.0:6543:6543"
+            # Aiohttp
+            # - "0.0.0.0:8080:8080"
+        environment:
+            # ToDo: use container name as consumer group?
+            #   Check container name is unique when scaling used.
+            CONSUMER_GROUP: Web1
+            PYTHONASYNCIODEBUG: 1
+        links:
+            - redis
+            - fuseki
+            - filemetadata
+            - kafka
+        volumes_from:
+            - filecache
+            - tempfiles
+        # Development
+        volumes:
+            - ../dataunity-web:/code
+        env_file: ./web_dev.env
+        # TODO: Switch to 'exec' form so signals are passed to app process, not shell
+        command: sh /code/startup_web.sh
+        # command: pserve development.ini --reload
+
+    webasync:
+        build: ../dataunity-web
+        # network_mode: host
+        # expose:
+        #     - "5004"
+        ports:
+            # Aiohttp
+            - "0.0.0.0:8080:8080"
+        environment:
+            # ToDo: use container name as consumer group?
+            #   Check container name is unique when scaling used.
+            CONSUMER_GROUP: WebAsync
+            PYTHONASYNCIODEBUG: 1
+        # links:
+        #     - kafka:kafka
+        depends_on:
+            - redis
+            - fuseki
+            - filemetadata
+            - kafka
+            - connect
+            - mosquitto
+        volumes_from:
+            - filecache
+            - tempfiles
+        # Development
+        volumes:
+            - ../dataunity-web:/code
+        env_file: ./web_dev.env
+        # TODO: Switch to 'exec' form so signals are passed to app process, not shell
+        command: sh /code/startup.sh
+        #command: gunicorn duweb.app:web_app --bind 0.0.0.0:8080 --worker-class aiohttp.worker.GunicornWebWorker --reload
+
+    # tmpfilemetadatamonitor:
+    #     build: ../kafka-topic-monitor
+    #     links:
+    #         - kafka
+    #         - zookeeper
+    #     environment:
+    #         CONSUMER_GROUP: FileMetaDataMonitor01
+    #         TOPIC: test1
+
+    # tmpfilemetadatareplymonitor:
+    #     build: ../kafka-topic-monitor
+    #     links:
+    #         - kafka
+    #         - zookeeper
+    #     environment:
+    #         CONSUMER_GROUP: FileMetaDataReplyMonitor01
+    #         TOPIC: test1reply
+
+    # tmppipesjobstartmonitor:
+    #     build: ../kafka-topic-monitor
+    #     links:
+    #         - kafka
+    #         - zookeeper
+    #     environment:
+    #         CONSUMER_GROUP: PipesJobStartMonitor01
+    #         TOPIC: dataworkflowjobstart
+
+    # tmppipesjobstatusmonitor:
+    #     build: ../kafka-topic-monitor
+    #     links:
+    #         - kafka
+    #         - zookeeper
+    #     environment:
+    #         CONSUMER_GROUP: PipesJobStatusMonitor01
+    #         TOPIC: dataworkflowjobstatus
