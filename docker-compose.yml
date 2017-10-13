@@ -226,16 +226,16 @@ services:
         build: ../dataunity-web
         # expose:
         #     - "5004"
-        ports:
+        # ports:
             # Pyramid
-            - "0.0.0.0:6543:6543"
+            # - "0.0.0.0:6543:6543"
             # Aiohttp
             # - "0.0.0.0:8080:8080"
         environment:
             # ToDo: use container name as consumer group?
             #   Check container name is unique when scaling used.
             CONSUMER_GROUP: Web1
-            PYTHONASYNCIODEBUG: 1
+            # PYTHONASYNCIODEBUG: 1
         links:
             - redis
             - fuseki
@@ -245,8 +245,8 @@ services:
             - filecache
             - tempfiles
         # Development
-        volumes:
-            - ../dataunity-web:/code
+        #volumes:
+        #    - ../dataunity-web:/code
         env_file: ./web_dev.env
         # TODO: Switch to 'exec' form so signals are passed to app process, not shell
         command: sh /code/startup_web.sh
@@ -257,14 +257,14 @@ services:
         # network_mode: host
         # expose:
         #     - "5004"
-        ports:
+        # ports:
             # Aiohttp
-            - "0.0.0.0:8080:8080"
+            # - "0.0.0.0:8080:8080"
         environment:
             # ToDo: use container name as consumer group?
             #   Check container name is unique when scaling used.
             CONSUMER_GROUP: WebAsync
-            PYTHONASYNCIODEBUG: 1
+            # PYTHONASYNCIODEBUG: 1
         # links:
         #     - kafka:kafka
         depends_on:
@@ -278,12 +278,20 @@ services:
             - filecache
             - tempfiles
         # Development
-        volumes:
-            - ../dataunity-web:/code
+        #volumes:
+        #    - ../dataunity-web:/code
         env_file: ./web_dev.env
         # TODO: Switch to 'exec' form so signals are passed to app process, not shell
         command: sh /code/startup.sh
         #command: gunicorn duweb.app:web_app --bind 0.0.0.0:8080 --worker-class aiohttp.worker.GunicornWebWorker --reload
+
+    # beamkafkatest:
+    #     build: /home/normal/tmp/beam-kafka-test
+    #     depends_on:
+    #         - zookeeper
+    #         - kafka
+    #     volumes_from:
+    #         - tempfiles
 
     # tmpfilemetadatamonitor:
     #     build: ../kafka-topic-monitor

@@ -1,0 +1,32 @@
+---
+version: '2'
+services:
+    # Web
+    web:
+        build: ../dataunity-web
+        ports:
+            - "0.0.0.0:6543:6543"
+        environment:
+            PYTHONASYNCIODEBUG: 1
+        # Development
+        volumes:
+            - ../dataunity-web:/code
+
+    webasync:
+        build: ../dataunity-web
+        ports:
+            # Aiohttp
+            - "0.0.0.0:8080:8080"
+        environment:
+            PYTHONASYNCIODEBUG: 1
+        # Development
+        volumes:
+            - ../dataunity-web:/code
+
+    beamkafkatest:
+        build: /home/normal/tmp/beam-kafka-test
+        depends_on:
+            - zookeeper
+            - kafka
+        volumes_from:
+            - tempfiles
