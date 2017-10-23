@@ -37,8 +37,8 @@ services:
             - zookeeper
             - kafka
             #- schema_registry
-        ports:
-            - "8083:8083"
+        #ports:
+        #    - "8083:8083"
         env_file: ./connect_dev.env
         environment:
             CONNECT_BOOTSTRAP_SERVERS: 'kafka:9092'

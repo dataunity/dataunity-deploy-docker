@@ -1,12 +1,18 @@
 ---
 version: '2'
 services:
+
+    connect:
+        ports:
+            - "0.0.0.0:8083:8083"
+
     # Web
     web:
         build: ../dataunity-web
         ports:
             - "0.0.0.0:6543:6543"
         environment:
+            OAUTHLIB_INSECURE_TRANSPORT: 1
             PYTHONASYNCIODEBUG: 1
         # Development
         volumes:
@@ -18,15 +24,25 @@ services:
             # Aiohttp
             - "0.0.0.0:8080:8080"
         environment:
+            # OAUTHLIB_INSECURE_TRANSPORT: 1
             PYTHONASYNCIODEBUG: 1
         # Development
         volumes:
             - ../dataunity-web:/code
 
-    beamkafkatest:
-        build: /home/normal/tmp/beam-kafka-test
-        depends_on:
-            - zookeeper
-            - kafka
-        volumes_from:
-            - tempfiles
+    # beamkafkatest:
+    #     build: /home/normal/tmp/beam-kafka-test
+    #     depends_on:
+    #         - zookeeper
+    #         - kafka
+    #     volumes_from:
+    #         - tempfiles
+
+    # kafkaconnectmanager:
+    #     build: /home/normal/tmp/kafka-connect-manager
+    #     depends_on:
+    #         - connect
+    #     volumes:
+    #         - /home/normal/tmp/kafka-connect-manager:/code
+    #     ports:
+    #         - "0.0.0.0:8081:8081"
