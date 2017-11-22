@@ -253,7 +253,8 @@ services:
         # command: pserve development.ini --reload
 
     webasync:
-        build: ../dataunity-web
+        # TODO: use docker image rather then build directory (or github)
+        build: ../du-web
         # network_mode: host
         # expose:
         #     - "5004"

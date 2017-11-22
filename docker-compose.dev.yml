@@ -19,7 +19,7 @@ services:
             - ../dataunity-web:/code
 
     webasync:
-        build: ../dataunity-web
+        build: ../du-web
         ports:
             # Aiohttp
             - "0.0.0.0:8080:8080"
@@ -28,7 +28,7 @@ services:
             PYTHONASYNCIODEBUG: 1
         # Development
         volumes:
-            - ../dataunity-web:/code
+            - ../du-web:/code
 
     # beamkafkatest:
     #     build: /home/normal/tmp/beam-kafka-test
