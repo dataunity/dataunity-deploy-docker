@@ -226,6 +226,10 @@ server {
 		proxy_pass {{ trim $proto }}://{{ trim $upstream_name }};
 		{{ end }}
 
+		# Kev: Hack fix for websocket timeout.
+		# TODO: move to new websocket location section
+		proxy_read_timeout 1200;
+
 		{{ if (exists (printf "/etc/nginx/htpasswd/%s" $host)) }}
 		auth_basic	"Restricted {{ $host }}";
 		auth_basic_user_file	{{ (printf "/etc/nginx/htpasswd/%s" $host) }};
@@ -263,6 +267,11 @@ server {
 		{{ else }}
 		proxy_pass {{ trim $proto }}://{{ trim $upstream_name }};
 		{{ end }}
+
+		# Kev: Hack fix for websocket timeout.
+		# TODO: move to new websocket location section
+		proxy_read_timeout 1200;
+		
 		{{ if (exists (printf "/etc/nginx/htpasswd/%s" $host)) }}
 		auth_basic	"Restricted {{ $host }}";
 		auth_basic_user_file	{{ (printf "/etc/nginx/htpasswd/%s" $host) }};
